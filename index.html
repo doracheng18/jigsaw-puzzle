@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>幻彩拼圖 Jigsaw Master PRO | 自由拖曳拼圖遊戲</title>
+  <meta name="description" content="極致沉浸的網頁自由拖曳拼圖遊戲。支援自然攝影、金幣獎勵商城、進度存檔保留、點進選片數、無格線真實桌面與磁吸音效！">
+  <meta name="keywords" content="拼圖, 拖曳拼圖, Jigsaw Puzzle, 拼圖遊戲, 每日拼圖, 自然攝影, 金幣商城, 拼圖存檔">
+  <meta name="theme-color" content="#0d1117">
+
+  <!-- Google Fonts: Outfit & Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Ambient background glow elements -->
+  <div class="ambient-glow glow-top-left" aria-hidden="true"></div>
+  <div class="ambient-glow glow-bottom-right" aria-hidden="true"></div>
+
+  <!-- Header Section -->
+  <header class="app-header">
+    <div class="header-left">
+      <div class="brand-logo">
+        <span class="logo-icon">🧩</span>
+        <div class="brand-text">
+          <h1 class="logo-title">Jigsaw Master <span class="badge-pro">PRO</span></h1>
+          <span class="logo-subtitle">真實自然風光 · 自由拖曳拼圖</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Stats Bar -->
+    <div class="game-stats">
+      <!-- Coin Balance Pill (Rewards System) -->
+      <div class="stat-pill coin-pill" id="btn-open-shop-pill" title="點擊開啟金幣兌換商城">
+        <span class="coin-icon">🪙</span>
+        <span class="stat-label">金幣</span>
+        <span id="coin-balance-display" class="stat-val font-numeric coin-val">100</span>
+      </div>
+
+      <div class="stat-pill" title="當前挑戰難度片數">
+        <span class="stat-icon">🧩</span>
+        <span class="stat-label">片數</span>
+        <span id="current-piece-count-badge" class="stat-val font-numeric">50片</span>
+      </div>
+
+      <div class="stat-pill" title="遊戲耗時">
+        <span class="stat-icon">⏱️</span>
+        <span class="stat-label">時間</span>
+        <span id="timer-display" class="stat-val font-numeric">00:00</span>
+      </div>
+
+      <div class="stat-pill" title="已移動步數">
+        <span class="stat-icon">👣</span>
+        <span class="stat-label">步數</span>
+        <span id="moves-display" class="stat-val font-numeric">0</span>
+      </div>
+
+      <div class="stat-pill" title="已吸附完成進度">
+        <span class="stat-icon">🎯</span>
+        <span class="stat-label">進度</span>
+        <span id="progress-display" class="stat-val font-numeric">0 / 50</span>
+      </div>
+    </div>
+
+    <!-- Header Actions -->
+    <div class="header-actions">
+      <button id="btn-open-shop" class="btn-shop" title="開啟金幣兌換商城（換畫框、解鎖圖庫、兌換道具）">
+        <span>🛒 獎勵商城</span>
+      </button>
+      <button id="btn-open-gallery" class="btn-primary" title="開啟精選圖庫挑選不同圖片">
+        <span>🖼️ 挑選圖庫</span>
+      </button>
+      <button id="btn-daily-special" class="btn-gold" title="切換至今日特別推薦拼圖">
+        <span>📅 今日特別</span>
+      </button>
+      <button id="btn-preview-modal" class="btn-secondary" title="查看完整原圖">
+        <span>👁️ 原圖</span>
+      </button>
+      <button id="btn-sound" class="btn-icon" title="切換音效 (已開啟)" aria-label="切換音效">
+        <span class="icon-speaker">🔊</span>
+      </button>
+      <button id="btn-restart" class="btn-secondary" title="重新開始本局">
+        <span>🔄 重洗</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- In-Progress Resume Banner (若這關沒有玩完可以預留到下一次) -->
+  <aside id="resume-banner" class="resume-banner hidden" aria-label="未完成進度提示">
+    <div class="resume-banner-inner">
+      <div class="resume-info">
+        <span class="resume-pin">📌</span>
+        <span class="resume-text">檢測到上次未完成的進度：<strong id="resume-puzzle-title">優勝美地倒影湖</strong>（已完成 <span id="resume-progress-count">24/50</span> 片）</span>
+      </div>
+      <div class="resume-actions">
+        <button id="btn-resume-game" class="btn-resume-confirm">▶️ 繼續上次未完成拼圖</button>
+        <button id="btn-discard-resume" class="btn-resume-discard" title="放棄上次進度">✕ 放棄存檔</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Daily Special Banner -->
+  <aside id="daily-banner" class="daily-banner" aria-label="每日挑戰專區">
+    <div class="daily-banner-inner">
+      <div class="daily-banner-content">
+        <span class="daily-tag">🌟 今日特別</span>
+        <span id="daily-date-label" class="daily-date">2026年10月23日</span>
+        <span class="daily-divider">|</span>
+        <span id="daily-title-label" class="daily-title">今日推薦：瑞士阿爾卑斯山峰與高山湖泊</span>
+        <span id="daily-reward-badge" class="daily-reward-badge">+250 獎勵金幣</span>
+        <span id="daily-status-badge" class="daily-status">🔥 每日挑戰</span>
+      </div>
+      <button id="btn-play-daily" class="btn-daily-play">立即挑戰今日特案 →</button>
+    </div>
+  </aside>
+
+  <!-- Progress Bar Line -->
+  <div class="progress-bar-container">
+    <div id="progress-bar-fill" class="progress-bar-fill" style="width: 0%"></div>
+  </div>
+
+  <!-- Controls & Settings Toolbar (No Piece Buttons Here - Piece Count is Chosen on Entry!) -->
+  <section class="toolbar-section">
+    <!-- Current Image Info & Quick Theme Bar -->
+    <div class="theme-selector-group">
+      <span class="toolbar-label">當前拼圖：</span>
+      <div class="current-theme-pill" id="current-theme-pill" title="點擊開啟圖庫挑選不同圖片與片數">
+        <img id="current-theme-thumb" src="assets/yosemite_valley.jpg" alt="當前拼圖縮圖" class="theme-thumb-small">
+        <span id="current-theme-title" class="theme-pill-name">優勝美地倒影湖</span>
+        <span class="pill-change-hint">換圖與片數 ▾</span>
+      </div>
+      <button class="theme-btn custom-upload-btn" id="btn-custom-upload" title="上傳自己的相片或壁紙">
+        <span class="theme-emoji">📸</span> 自訂相片
+      </button>
+      <input type="file" id="file-input" accept="image/*" class="visually-hidden">
+    </div>
+
+    <!-- Power-up Items Inventory Bar (Distinct Game Items) -->
+    <div class="inventory-bar" id="inventory-bar">
+      <span class="toolbar-label">我的道具：</span>
+      <button id="btn-use-magnet" class="item-chip" title="智能磁吸石：自動找出並吸附 2 塊能拼合的相鄰碎片">
+        <span class="item-icon">🧲</span>
+        <span class="item-name">磁吸石</span>
+        <span id="count-magnet" class="item-count">0</span>
+      </button>
+      <button id="btn-use-corners" class="item-chip" title="四角定位石：一鍵找出並吸附最外圍 4 個角隅基礎碎片">
+        <span class="item-icon">🧩</span>
+        <span class="item-name">四角石</span>
+        <span id="count-corners" class="item-count">0</span>
+      </button>
+      <button id="btn-use-freeze" class="item-chip" title="時間凍結沙漏：暫停計時 45 秒，衝刺三星紀錄！">
+        <span class="item-icon">⏳</span>
+        <span class="item-name">凍結沙漏</span>
+        <span id="count-freeze" class="item-count">0</span>
+      </button>
+      <button id="btn-use-doublecoin" class="item-chip" title="幸運雙倍符：本局通關獲得 200% 翻倍金幣獎勵！">
+        <span class="item-icon">💰</span>
+        <span class="item-name">雙倍符</span>
+        <span id="count-doublecoin" class="item-count">0</span>
+      </button>
+    </div>
+
+    <!-- Display Settings (Shape, Zoom, Opacity) -->
+    <div class="settings-group">
+      <!-- Piece shape -->
+      <div class="control-unit">
+        <label class="toolbar-label">卡榫：</label>
+        <div class="segmented-control" id="shape-style-selector">
+          <button class="seg-btn active" data-shape="jigsaw" title="經典拼圖咬合卡榫">🧩 經典</button>
+          <button class="seg-btn" data-shape="tile" title="現代無卡榫幾何方塊">🔲 方塊</button>
+        </div>
+      </div>
+
+      <!-- Board Zoom -->
+      <div class="control-unit">
+        <label class="toolbar-label">畫布大小：</label>
+        <div class="segmented-control" id="board-zoom-selector">
+          <button class="seg-btn active" data-zoom="1.0" title="標準 100%">1x</button>
+          <button class="seg-btn" data-zoom="1.25" title="放大 125%">1.25x</button>
+          <button class="seg-btn" data-zoom="1.5" title="特大 150%">1.5x</button>
+        </div>
+      </div>
+
+      <!-- Ghost preview opacity slider -->
+      <div class="control-unit ghost-slider-unit">
+        <label for="ghost-opacity-slider" class="toolbar-label">底圖透光：</label>
+        <div class="slider-wrapper">
+          <input type="range" id="ghost-opacity-slider" min="0" max="80" value="20" class="styled-slider">
+          <span id="ghost-opacity-val" class="slider-val">20%</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Main Playing Stage (Open Table Workbench without Grid Lines) -->
+  <main class="game-stage" id="game-stage">
+    
+    <!-- Target Puzzle Board (Left / Top) -->
+    <div class="board-column">
+      <div class="column-header">
+        <div class="column-title-badge">
+          <span class="dot-indicator"></span>
+          <span>純淨無格線畫布 Board</span>
+          <span class="placement-hint">（放錯不彈回，自由擺放）</span>
+        </div>
+        <div class="board-hints-tools">
+          <button id="btn-toggle-ghost" class="btn-micro active" title="快速開關底圖提示">
+            <span>👁️ 底圖開關</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="board-outer-wrapper theme-frame-default" id="board-outer-wrapper">
+        <div class="board-frame" id="board-frame">
+          <!-- Canvas for clean background (NO GRID LINES!) -->
+          <canvas id="board-bg-canvas" class="board-bg-canvas"></canvas>
+          <!-- Layer where correctly placed pieces lock into -->
+          <div id="board-snapped-layer" class="board-snapped-layer"></div>
+          <!-- Completion glowing border overlay -->
+          <div id="board-glow-effect" class="board-glow-effect"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pieces Tray / Workbench (Right / Bottom) -->
+    <div class="tray-column">
+      <div class="column-header">
+        <div class="column-title-badge">
+          <span class="dot-indicator dot-tray"></span>
+          <span>自由工作台 Table & Tray</span>
+        </div>
+        <div class="tray-actions">
+          <button id="btn-recall-pieces" class="btn-micro" title="將所有散落桌面上的未拼碎片整齊收納回托盤">
+            <span>📥 歸位托盤</span>
+          </button>
+          <button id="btn-align-tray" class="btn-micro" title="一鍵自動整齊排列托盤碎片">
+            <span>📐 自動整列</span>
+          </button>
+          <button id="btn-scatter-tray" class="btn-micro" title="散落打亂托盤碎片">
+            <span>✨ 隨機散落</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="tray-container" id="tray-container">
+        <!-- Interactive piece workbench -->
+        <div class="tray-inner" id="tray-inner">
+          <!-- Draggable puzzle piece canvases reside here freely -->
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Dragging Ghost Overlay Layer (moves freely across whole viewport) -->
+  <div id="drag-layer" class="drag-layer"></div>
+
+  <!-- Particle / Sparkles Canvas Overlay -->
+  <canvas id="fx-canvas" class="fx-canvas"></canvas>
+
+  <!-- =====================================================================
+       Piece Selection Modal (片數只能在一點進圖片時選擇！)
+       ===================================================================== -->
+  <div id="piece-selection-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="piece-modal-title">
+    <div class="modal-card piece-selection-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <h2 id="piece-modal-title" class="modal-title">🧩 選擇拼圖挑戰片數</h2>
+          <span class="modal-subtitle">片數越高，挑戰性越強，通關獎勵金幣越豐厚！</span>
+        </div>
+        <button id="btn-close-piece-modal" class="btn-close-modal" aria-label="關閉">✕</button>
+      </div>
+
+      <!-- Selected Image Preview Card -->
+      <div class="selected-image-bar">
+        <img id="piece-modal-preview-img" src="assets/yosemite_valley.jpg" alt="預覽圖" class="piece-modal-thumb">
+        <div class="selected-image-text">
+          <h3 id="piece-modal-image-title" class="piece-modal-name">優勝美地倒影湖</h3>
+          <span id="piece-modal-image-location" class="piece-modal-loc">美國加州 · Yosemite</span>
+        </div>
+      </div>
+
+      <!-- Piece Count Options Grid -->
+      <div class="piece-options-grid">
+        <div class="piece-option-card" data-pieces="24">
+          <div class="po-count">24 片</div>
+          <div class="po-desc">輕鬆入門</div>
+          <div class="po-reward">🪙 +60 幣</div>
+        </div>
+        <div class="piece-option-card active" data-pieces="50">
+          <div class="po-badge-recommend">推薦</div>
+          <div class="po-count">50 片</div>
+          <div class="po-desc">標準暢玩</div>
+          <div class="po-reward">🪙 +150 幣</div>
+        </div>
+        <div class="piece-option-card" data-pieces="100">
+          <div class="po-count">100 片</div>
+          <div class="po-desc">進階專注</div>
+          <div class="po-reward">🪙 +350 幣</div>
+        </div>
+        <div class="piece-option-card" data-pieces="150">
+          <div class="po-count">150 片</div>
+          <div class="po-desc">深度挑戰</div>
+          <div class="po-reward">🪙 +550 幣</div>
+        </div>
+        <div class="piece-option-card" data-pieces="300">
+          <div class="po-count">300 片</div>
+          <div class="po-desc">狂熱拼圖</div>
+          <div class="po-reward">🪙 +1000 幣</div>
+        </div>
+        <div class="piece-option-card" data-pieces="400">
+          <div class="po-count">400 片</div>
+          <div class="po-desc">大師極限</div>
+          <div class="po-reward">🪙 +1500 幣</div>
+        </div>
+      </div>
+
+      <!-- Custom Piece Input Toggle -->
+      <div class="custom-piece-row">
+        <span class="custom-piece-label">或自訂片數：</span>
+        <input type="number" id="custom-piece-field" min="12" max="600" placeholder="例: 70" class="custom-piece-mini-input">
+        <span class="custom-piece-unit">片</span>
+      </div>
+
+      <div class="modal-footer">
+        <button id="btn-cancel-piece-select" class="btn-ghost">返回圖庫</button>
+        <button id="btn-confirm-start-puzzle" class="btn-primary btn-large">
+          <span>🚀 開始拼圖</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =====================================================================
+       Coins Reward Shop Modal (獎勵制：金幣商城換東西)
+       ===================================================================== -->
+  <div id="shop-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="shop-modal-title">
+    <div class="modal-card shop-modal-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <h2 id="shop-modal-title" class="modal-title">🛒 拼圖金幣獎勵商城</h2>
+          <span class="modal-subtitle">通關拼圖賺取金幣，兌換限定外觀、通關神級道具與專屬圖庫！</span>
+        </div>
+        <div class="shop-balance-badge">
+          <span>目前金幣：</span>
+          <strong class="shop-coin-num">🪙 <span id="shop-coin-balance">100</span></strong>
+        </div>
+        <button id="btn-close-shop" class="btn-close-modal" aria-label="關閉商城">✕</button>
+      </div>
+
+      <!-- Shop Category Navigation Tabs -->
+      <div class="shop-nav-tabs">
+        <button class="shop-tab-btn active" data-tab="frames">🏛️ 畫框風格</button>
+        <button class="shop-tab-btn" data-tab="items">🧲 通關道具</button>
+        <button class="shop-tab-btn" data-tab="puzzles">🖼️ 秘境圖庫</button>
+      </div>
+
+      <!-- Shop Catalog Body -->
+      <div class="shop-items-container" id="shop-items-container">
+        <!-- Rendered dynamically by script.js -->
+      </div>
+
+      <div class="modal-footer">
+        <span class="shop-tips">💡 提示：完成每日特別挑戰、完成更多片數拼圖可賺取大量金幣！</span>
+        <button id="btn-close-shop-2" class="btn-secondary">完成</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =====================================================================
+       Gallery Catalog Modal
+       ===================================================================== -->
+  <div id="gallery-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="gallery-modal-title">
+    <div class="modal-card gallery-modal-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <h2 id="gallery-modal-title" class="modal-title">🖼️ 精選拼圖圖庫</h2>
+          <span class="modal-subtitle">精選真實自然景緻、名勝與傳世名畫，點擊圖片進入選擇片數！</span>
+        </div>
+        <button id="btn-close-gallery" class="btn-close-modal" aria-label="關閉圖庫">✕</button>
+      </div>
+
+      <!-- Category Filter Tabs -->
+      <div class="gallery-category-bar" id="gallery-categories">
+        <button class="gallery-cat-btn active" data-cat="all">🌟 全部圖庫</button>
+        <button class="gallery-cat-btn" data-cat="daily">📅 每日特別</button>
+        <button class="gallery-cat-btn" data-cat="nature">🏞️ 自然風光</button>
+        <button class="gallery-cat-btn" data-cat="landmark">🌸 世界名勝</button>
+        <button class="gallery-cat-btn" data-cat="animal">🐾 療癒萌寵</button>
+        <button class="gallery-cat-btn" data-cat="art">🎨 世界名畫</button>
+        <button class="gallery-cat-btn" data-cat="secret">🔒 秘境商城</button>
+      </div>
+
+      <!-- Photo Cards Grid -->
+      <div class="gallery-grid" id="gallery-grid">
+        <!-- Injected dynamically by script.js -->
+      </div>
+
+      <div class="modal-footer gallery-modal-footer">
+        <div class="custom-upload-footer-hint">
+          <span>想要拼自己的照片？</span>
+          <button id="btn-gallery-upload" class="btn-secondary">📸 上傳本地相片</button>
+        </div>
+        <button id="btn-close-gallery-2" class="btn-ghost">關閉</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Image Preview Modal -->
+  <div id="preview-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="preview-modal-title">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="preview-modal-title" class="modal-title">原圖參考預覽</h3>
+        <button id="btn-close-preview" class="btn-close-modal" aria-label="關閉預覽">✕</button>
+      </div>
+      <div class="modal-body preview-modal-body">
+        <img id="preview-modal-img" src="assets/yosemite_valley.jpg" alt="拼圖完整原圖預覽" class="preview-img-full">
+      </div>
+      <div class="modal-footer">
+        <span id="preview-info-text" class="preview-info">點擊任意處或按 ESC 即可關閉</span>
+        <button id="btn-close-preview-2" class="btn-secondary">關閉</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Victory Celebration Modal (With Earned Coins Reward Display!) -->
+  <div id="victory-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="victory-modal-title">
+    <div class="modal-card celebration-card">
+      <div class="celebration-badge">🏆 挑戰成功！</div>
+      <h2 id="victory-modal-title" class="celebration-title">恭喜完成拼圖！</h2>
+      <p id="celebration-image-title" class="celebration-desc">優勝美地倒影湖 · 完美復原！</p>
+
+      <!-- Earned Coins Reward Highlight Banner -->
+      <div class="victory-coin-award-box">
+        <span class="vcoin-tag">獲得獎勵</span>
+        <div class="vcoin-amount">
+          <span class="vcoin-icon">🪙</span>
+          <span id="vcoin-earned" class="vcoin-num font-numeric">+150</span>
+          <span class="vcoin-label">金幣</span>
+        </div>
+        <span id="vcoin-bonus-desc" class="vcoin-sub">包含通關金幣 + 每日挑戰加成</span>
+      </div>
+
+      <!-- Star Rating -->
+      <div class="star-rating" id="victory-stars">
+        <span class="star filled">★</span>
+        <span class="star filled">★</span>
+        <span class="star filled">★</span>
+      </div>
+
+      <!-- Result Stats Card -->
+      <div class="victory-stats-grid">
+        <div class="vstat-item">
+          <span class="vstat-icon">⏱️</span>
+          <span class="vstat-name">耗費時間</span>
+          <span id="vstat-time" class="vstat-num font-numeric">01:25</span>
+        </div>
+        <div class="vstat-item">
+          <span class="vstat-icon">👣</span>
+          <span class="vstat-name">移動步數</span>
+          <span id="vstat-moves" class="vstat-num font-numeric">52 步</span>
+        </div>
+        <div class="vstat-item">
+          <span class="vstat-icon">🧩</span>
+          <span class="vstat-name">挑戰片數</span>
+          <span id="vstat-difficulty" class="vstat-num font-numeric">50片 (10×5)</span>
+        </div>
+        <div class="vstat-item">
+          <span class="vstat-icon">👑</span>
+          <span class="vstat-name">歷史最佳</span>
+          <span id="vstat-best" class="vstat-num font-numeric">01:10</span>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="victory-actions">
+        <button id="btn-next-puzzle" class="btn-primary btn-large">
+          <span>✨ 挑選下一張拼圖</span>
+        </button>
+        <button id="btn-victory-shop" class="btn-shop btn-large">
+          <span>🛒 前往商城兌換獎勵</span>
+        </button>
+        <button id="btn-play-again" class="btn-ghost">
+          <span>🔄 重新打亂本關</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
