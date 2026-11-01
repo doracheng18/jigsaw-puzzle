@@ -1452,23 +1452,21 @@ class JigsawGame {
     });
 
     // Tray table helper buttons (Free ergonomic table layout tools)
-    const recallBtn = document.getElementById('btn-recall-pieces');
-    if (recallBtn) {
-      recallBtn.addEventListener('click', () => {
+    const alignBtn = document.getElementById('btn-align-tray');
+    if (alignBtn) {
+      alignBtn.addEventListener('click', () => {
         this.sound.playShuffle();
         this.alignTrayPieces();
       });
     }
 
-    document.getElementById('btn-align-tray').addEventListener('click', () => {
-      this.sound.playShuffle();
-      this.alignTrayPieces();
-    });
-
-    document.getElementById('btn-scatter-tray').addEventListener('click', () => {
-      this.sound.playShuffle();
-      this.scatterTrayPieces();
-    });
+    const scatterBtn = document.getElementById('btn-scatter-tray');
+    if (scatterBtn) {
+      scatterBtn.addEventListener('click', () => {
+        this.sound.playShuffle();
+        this.scatterTrayPieces();
+      });
+    }
 
     // Original Image Preview Modal
     const previewBtn = document.getElementById('btn-preview-modal');
