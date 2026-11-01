@@ -1840,12 +1840,65 @@ button {
 }
 
 /* ==========================================================================
-   Responsive Adaptations
+   Device Toggle Button & Touch Ergonomics
    ========================================================================== */
-@media (max-width: 960px) {
+.btn-device-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(30, 41, 59, 0.85);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: #38bdf8;
+  padding: 6px 12px;
+  border-radius: 9999px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
+  backdrop-filter: blur(8px);
+}
+
+.btn-device-toggle:hover {
+  background: rgba(56, 189, 248, 0.15);
+  border-color: #38bdf8;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(56, 189, 248, 0.25);
+}
+
+.btn-device-toggle.mode-mobile {
+  border-color: #a855f7;
+  color: #c084fc;
+  background: rgba(168, 85, 247, 0.12);
+}
+
+.btn-device-toggle.mode-mobile:hover {
+  background: rgba(168, 85, 247, 0.22);
+  box-shadow: 0 4px 12px rgba(168, 85, 247, 0.3);
+}
+
+.puzzle-piece-wrapper.is-touch-lift {
+  transform: scale(1.06);
+  filter: drop-shadow(0 14px 24px rgba(0, 0, 0, 0.6)) drop-shadow(0 0 10px rgba(56, 189, 248, 0.45));
+  z-index: 9999 !important;
+}
+
+/* 防止拖曳拼圖時觸發瀏覽器預設手勢滾動 */
+.puzzle-piece-wrapper,
+#drag-layer,
+#board-frame {
+  touch-action: none;
+}
+
+/* ==========================================================================
+   Responsive & Mobile Adaptations (自動偵測手機與電腦螢幕版本)
+   ========================================================================== */
+@media (max-width: 960px), body.is-mobile {
   .game-stage {
     grid-template-columns: 1fr;
     justify-items: center;
+    gap: 16px;
+    padding: 10px;
   }
   .board-column {
     align-items: center;
@@ -1854,32 +1907,118 @@ button {
   .tray-column {
     width: 100%;
   }
-}
-
-@media (max-width: 640px) {
-  :root {
-    --board-base-width: 330px;
-    --board-base-height: 250px;
-  }
   .app-header {
+    flex-wrap: wrap;
+    gap: 10px;
     padding: 10px 14px;
   }
-  .logo-title {
-    font-size: 1.15rem;
+  .header-actions {
+    flex-wrap: wrap;
+    gap: 8px;
+    width: 100%;
+    justify-content: flex-end;
   }
   .game-stats {
     width: 100%;
     justify-content: space-between;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+  }
+  .game-stats::-webkit-scrollbar {
+    display: none;
   }
   .toolbar-section {
-    padding: 8px 12px;
-    gap: 8px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 10px 12px;
   }
+  .theme-selector-group,
+  .inventory-bar,
   .settings-group {
     width: 100%;
-    justify-content: space-between;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+  }
+  .theme-selector-group::-webkit-scrollbar,
+  .inventory-bar::-webkit-scrollbar,
+  .settings-group::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* 手機直向螢幕 (Portrait Mode) 專屬佈局優化 */
+@media (max-width: 640px), (body.is-mobile.is-portrait) {
+  :root {
+    --board-base-width: 340px;
+    --board-base-height: 255px;
+  }
+  .app-header {
+    padding: 8px 10px;
+  }
+  .brand-logo {
+    gap: 8px;
+  }
+  .logo-icon {
+    font-size: 1.5rem;
+  }
+  .logo-title {
+    font-size: 1.05rem;
+  }
+  .logo-subtitle {
+    display: none; /* 手機端隱藏次標題以維持清爽 */
+  }
+  .stat-pill {
+    padding: 4px 8px;
+    font-size: 0.78rem;
+  }
+  .header-actions button {
+    padding: 6px 10px;
+    font-size: 0.8rem;
   }
   .board-outer-wrapper {
-    padding: 8px;
+    padding: 6px;
+    margin: 0 auto;
+    box-sizing: border-box;
+    max-width: 100%;
+  }
+  .tray-container {
+    min-height: 280px;
+    height: 38vh;
+    max-height: 420px;
+  }
+  .piece-selection-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+  .modal-dialog {
+    width: 95vw !important;
+    max-height: 90vh !important;
+    padding: 16px !important;
+  }
+  .gallery-grid {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)) !important;
+    gap: 10px !important;
+  }
+}
+
+/* 手機橫向螢幕 (Landscape Mode) 專屬佈局優化 */
+@media (max-height: 500px) and (orientation: landscape), (body.is-mobile.is-landscape) {
+  .app-header {
+    padding: 6px 12px;
+  }
+  .logo-subtitle {
+    display: none;
+  }
+  .game-stage {
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    padding: 6px 12px;
+  }
+  .tray-container {
+    height: calc(100vh - 120px);
+    min-height: 200px;
   }
 }

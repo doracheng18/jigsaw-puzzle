@@ -5,7 +5,107 @@
  * 2. 金幣獎勵商城制：通關依片數賺取金幣，可購買自訂畫框、通關道具（磁吸石、邊框箱、透視眼）與解鎖秘境圖庫。
  * 3. 預留進度存檔：未完成時自動保存進度（時間、步數、卡榫形狀、吸附與散落位置），可隨時無縫繼續。
  * 4. 點進圖片選片數：主介面取消隨意切換片數，嚴格在點選圖片進入時跳出片數選擇器。
+ * 5. 自動偵測手機/電腦螢幕版本：支援響應式佈局、觸控人體工學抬升與手動/自動切換。
  */
+
+// ============================================================================
+// Device & Screen Auto-Detection (手機 / 平板 / 電腦螢幕 自動偵測與自適應)
+// ============================================================================
+const DeviceDetector = {
+  getForcedMode() {
+    const params = new URLSearchParams(window.location.search);
+    const forced = params.get('device');
+    if (forced === 'mobile' || forced === 'desktop') return forced;
+    return sessionStorage.getItem('jigsaw_forced_device');
+  },
+
+  setForcedMode(mode) {
+    if (mode === 'mobile' || mode === 'desktop') {
+      sessionStorage.setItem('jigsaw_forced_device', mode);
+    } else {
+      sessionStorage.removeItem('jigsaw_forced_device');
+    }
+  },
+
+  detect() {
+    const forced = this.getForcedMode();
+    const ua = navigator.userAgent || '';
+    const uaMobile = /Android|iPhone|iPod|Mobile|Silk|Kindle|Opera Mini|IEMobile|webOS|BlackBerry/i.test(ua);
+    const isIPadOS = /Macintosh/.test(ua) && navigator.maxTouchPoints > 1;
+    const isTouch = (
+      'ontouchstart' in window ||
+      navigator.maxTouchPoints > 0 ||
+      (window.matchMedia && window.matchMedia('(pointer: coarse)').matches)
+    );
+    const isSmallScreen = window.innerWidth <= 840;
+
+    let type = 'desktop';
+    if (forced === 'mobile' || forced === 'desktop') {
+      type = forced;
+    } else if (uaMobile || isIPadOS || (isTouch && isSmallScreen)) {
+      type = 'mobile';
+    }
+
+    const isPortrait = window.innerHeight > window.innerWidth;
+
+    return {
+      type,
+      isMobile: type === 'mobile',
+      isDesktop: type === 'desktop',
+      isTouch,
+      isPortrait,
+      isForced: Boolean(forced)
+    };
+  },
+
+  apply() {
+    const info = this.detect();
+    const doc = document.documentElement;
+    const body = document.body;
+
+    doc.classList.toggle('is-mobile', info.isMobile);
+    doc.classList.toggle('is-desktop', info.isDesktop);
+    doc.classList.toggle('is-touch', info.isTouch);
+    doc.classList.toggle('is-portrait', info.isPortrait);
+    doc.classList.toggle('is-landscape', !info.isPortrait);
+
+    if (body) {
+      body.classList.toggle('is-mobile', info.isMobile);
+      body.classList.toggle('is-desktop', info.isDesktop);
+      body.classList.toggle('is-touch', info.isTouch);
+      body.classList.toggle('is-portrait', info.isPortrait);
+      body.classList.toggle('is-landscape', !info.isPortrait);
+    }
+
+    const iconEl = document.getElementById('device-icon');
+    const labelEl = document.getElementById('device-label');
+    const toggleBtn = document.getElementById('btn-device-toggle');
+
+    if (iconEl && labelEl) {
+      if (info.isMobile) {
+        iconEl.textContent = info.isPortrait ? '📱' : '📲';
+        labelEl.textContent = info.isForced ? '手機模式 (自訂)' : (info.isPortrait ? '手機直屏' : '手機橫屏');
+      } else {
+        iconEl.textContent = '💻';
+        labelEl.textContent = info.isForced ? '電腦模式 (自訂)' : '電腦桌面';
+      }
+    }
+
+    if (toggleBtn) {
+      toggleBtn.classList.toggle('mode-mobile', info.isMobile);
+      toggleBtn.classList.toggle('mode-desktop', info.isDesktop);
+      toggleBtn.classList.toggle('mode-forced', info.isForced);
+      toggleBtn.title = `目前偵測：${info.isMobile ? '📱 手機版' : '💻 電腦版'} (點擊可切換 📱/💻 預覽)`;
+    }
+
+    return info;
+  }
+};
+
+// 立即套用一次以防止初次渲染閃爍
+if (typeof document !== 'undefined') {
+  DeviceDetector.apply();
+}
 
 // ============================================================================
 // Natural Photography & Masterpiece Catalog
@@ -1114,8 +1214,24 @@ class JigsawGame {
   computeBoardDimensions() {
     if (!this.loadedImage) return;
     const imgRatio = this.loadedImage.width / this.loadedImage.height;
-    const stageWidth = this.trayContainer.parentElement.clientWidth;
-    const maxAvailable = stageWidth > 960 ? Math.min(580, stageWidth * 0.45) : Math.min(480, stageWidth - 48);
+    const isMobile = document.body.classList.contains('is-mobile');
+    const isPortrait = window.innerHeight > window.innerWidth;
+    const stageWidth = this.trayContainer && this.trayContainer.parentElement ? this.trayContainer.parentElement.clientWidth : window.innerWidth;
+
+    let maxAvailable;
+    if (isMobile) {
+      if (isPortrait) {
+        // 手機直向模式：最大化寬度以利手指觸控對位
+        maxAvailable = Math.min(window.innerWidth - 24, 460);
+      } else {
+        // 手機橫向模式：注意垂直高度不要超出螢幕
+        const maxH = Math.max(160, window.innerHeight - 130);
+        maxAvailable = Math.min(stageWidth * 0.48, maxH * imgRatio);
+      }
+    } else {
+      // 電腦模式：大螢幕最佳化
+      maxAvailable = stageWidth > 1100 ? Math.min(640, stageWidth * 0.48) : Math.min(520, stageWidth * 0.45);
+    }
 
     this.boardWidth = Math.round(maxAvailable * this.boardZoom);
     this.boardHeight = Math.round(this.boardWidth / imgRatio);
@@ -1141,11 +1257,33 @@ class JigsawGame {
   }
 
   bindEvents() {
-    window.addEventListener('resize', () => {
+    // 設備與螢幕自適應即時響應
+    const handleScreenChange = () => {
+      DeviceDetector.apply();
       this.computeBoardDimensions();
       this.drawBoardBackground();
       this.recalculateTargetCoordinates();
+    };
+
+    window.addEventListener('resize', handleScreenChange);
+    window.addEventListener('orientationchange', () => {
+      setTimeout(handleScreenChange, 150);
     });
+
+    // 手動/自動切換設備模式按鈕 (可供點擊測試手機/電腦版本)
+    const deviceToggleBtn = document.getElementById('btn-device-toggle');
+    if (deviceToggleBtn) {
+      deviceToggleBtn.addEventListener('click', () => {
+        const cur = DeviceDetector.detect();
+        const nextMode = cur.isMobile ? 'desktop' : 'mobile';
+        DeviceDetector.setForcedMode(nextMode);
+        DeviceDetector.apply();
+        this.computeBoardDimensions();
+        this.drawBoardBackground();
+        this.recalculateTargetCoordinates();
+        this.alignTrayPieces();
+      });
+    }
 
     // Sound toggle
     const soundBtn = document.getElementById('btn-sound');
@@ -1713,11 +1851,17 @@ class JigsawGame {
     const el = piece.element;
     const rect = el.getBoundingClientRect();
 
+    // 觸控人體工學優化：手機手指觸控時向上微抬 24px，避免玩家手指遮住拼圖卡榫與對位邊緣
+    const isTouch = e.pointerType === 'touch' || document.body.classList.contains('is-touch') || document.body.classList.contains('is-mobile');
+    const touchLiftY = isTouch ? 24 : 0;
+
     this.dragPointerOffset.x = e.clientX - rect.left;
-    this.dragPointerOffset.y = e.clientY - rect.top;
+    this.dragPointerOffset.y = e.clientY - rect.top + touchLiftY;
 
     this.dragLayer.appendChild(el);
     el.classList.add('is-dragging');
+    if (isTouch) el.classList.add('is-touch-lift');
+
     el.style.left = `${e.clientX - this.dragPointerOffset.x}px`;
     el.style.top = `${e.clientY - this.dragPointerOffset.y}px`;
   }
@@ -1739,7 +1883,7 @@ class JigsawGame {
     const piece = this.activeDragPiece;
     const el = piece.element;
     this.activeDragPiece = null;
-    el.classList.remove('is-dragging');
+    el.classList.remove('is-dragging', 'is-touch-lift');
 
     this.moves++;
     this.movesDisplay.textContent = this.moves;

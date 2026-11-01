@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>幻彩拼圖 Jigsaw Master PRO | 自由拖曳拼圖遊戲</title>
   <meta name="description" content="極致沉浸的網頁自由拖曳拼圖遊戲。支援自然攝影、金幣獎勵商城、進度存檔保留、點進選片數、無格線真實桌面與磁吸音效！">
   <meta name="keywords" content="拼圖, 拖曳拼圖, Jigsaw Puzzle, 拼圖遊戲, 每日拼圖, 自然攝影, 金幣商城, 拼圖存檔">
@@ -68,6 +68,12 @@
 
     <!-- Header Actions -->
     <div class="header-actions">
+      <!-- 自動偵測模式徽章 / 手動切換鈕 -->
+      <button id="btn-device-toggle" class="btn-device-toggle" title="自動偵測螢幕與設備 (點擊可切換預覽 手機/電腦 模式)">
+        <span class="device-icon" id="device-icon">💻</span>
+        <span class="device-label" id="device-label">電腦版</span>
+      </button>
+
       <button id="btn-open-shop" class="btn-shop" title="開啟金幣兌換商城（換畫框、解鎖圖庫、兌換道具）">
         <span>🛒 獎勵商城</span>
       </button>
