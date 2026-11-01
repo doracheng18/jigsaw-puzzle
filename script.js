@@ -1957,6 +1957,13 @@ class JigsawGame {
     const unsnapped = this.pieces.filter(p => !p.isSnapped);
     if (unsnapped.length === 0) return;
 
+    // 將未拼碎片隨機打亂洗牌（Fisher-Yates Shuffle），確保排列整齊但順序是隨機亂序的
+    const shuffled = [...unsnapped];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+
     const trayRect = this.trayInner.getBoundingClientRect();
     const pad = 8;
     const availableW = Math.max(300, trayRect.width - pad * 2);
@@ -1965,7 +1972,7 @@ class JigsawGame {
     const sampleH = unsnapped[0].canvasH;
     const cols = Math.max(2, Math.floor(availableW / (sampleW * 0.95 + pad)));
 
-    unsnapped.forEach((p, idx) => {
+    shuffled.forEach((p, idx) => {
       const col = idx % cols;
       const row = Math.floor(idx / cols);
 
