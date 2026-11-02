@@ -1012,13 +1012,12 @@ button {
 }
 
 .puzzle-piece.is-dragging {
-  position: fixed !important;
   cursor: grabbing !important;
   z-index: 99999 !important;
   filter: drop-shadow(0 20px 38px rgba(0, 0, 0, 0.85)) drop-shadow(0 0 16px rgba(56, 189, 248, 0.6)) brightness(1.1);
   transform: scale(1.06);
   transition: none !important;
-  pointer-events: none;
+  pointer-events: auto !important;
 }
 
 .puzzle-piece.snapped {

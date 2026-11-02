@@ -1508,10 +1508,22 @@ class JigsawGame {
       this.shopModal.classList.remove('hidden');
     });
 
-    // Global drag pointer handlers
-    window.addEventListener('pointermove', (e) => this.onPointerMove(e));
+    // Global drag pointer & touch handlers (雙重保障 Pointer 與 Touch，保證任何裝置絕不中斷拖曳)
+    window.addEventListener('pointermove', (e) => this.onPointerMove(e), { passive: false });
     window.addEventListener('pointerup', (e) => this.onPointerUp(e));
     window.addEventListener('pointercancel', (e) => this.onPointerUp(e));
+
+    window.addEventListener('touchmove', (e) => {
+      if (this.activeDragPiece) {
+        if (e.cancelable) e.preventDefault();
+        this.onPointerMove(e);
+      }
+    }, { passive: false });
+    window.addEventListener('touchend', (e) => {
+      if (this.activeDragPiece) {
+        this.onPointerUp(e);
+      }
+    });
 
     // Keyboard ESC
     window.addEventListener('keydown', (e) => {
@@ -1851,13 +1863,7 @@ class JigsawGame {
   // ============================================================================
   onPiecePointerDown(e, piece) {
     if (piece.isSnapped) return;
-    e.preventDefault();
-
-    try {
-      if (e.target && e.target.setPointerCapture && e.pointerId !== undefined) {
-        e.target.setPointerCapture(e.pointerId);
-      }
-    } catch (err) {}
+    if (e.cancelable) e.preventDefault();
 
     if (!this.hasStarted) {
       this.startTimer();
@@ -1866,12 +1872,11 @@ class JigsawGame {
 
     this.sound.playPick();
     this.activeDragPiece = piece;
-    this.activePointerId = e.pointerId;
 
     const clientX = e.clientX ?? (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
     const clientY = e.clientY ?? (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
 
-    const isTouch = e.pointerType === 'touch' || document.body.classList.contains('is-touch') || document.body.classList.contains('is-mobile');
+    const isTouch = e.pointerType === 'touch' || Boolean(e.touches) || document.body.classList.contains('is-touch') || document.body.classList.contains('is-mobile');
     const touchLiftY = isTouch ? 24 : 0;
 
     const baseRect = piece.element.getBoundingClientRect();
@@ -1883,26 +1888,30 @@ class JigsawGame {
     const cluster = piece.cluster || [piece];
     this.clusterDragOffsets = [];
 
-    // 移動群組中的所有碎片，改用 fixed 螢幕定位，解決 iPhone 點選中斷 bug，DOM 樹無需中途移動
+    // 將整組碎片掛載於全螢幕 dragLayer 進行零遮擋自由拖曳
     cluster.forEach(m => {
       const mRect = m.element.getBoundingClientRect();
+      const dx = mRect.left - baseRect.left;
+      const dy = mRect.top - baseRect.top;
+
+      this.dragLayer.appendChild(m.element);
       m.element.classList.add('is-dragging');
       if (isTouch) m.element.classList.add('is-touch-lift');
 
       this.clusterDragOffsets.push({
         piece: m,
-        dx: mRect.left - baseRect.left,
-        dy: mRect.top - baseRect.top
+        dx,
+        dy
       });
 
-      m.element.style.left = `${mRect.left}px`;
-      m.element.style.top = `${mRect.top}px`;
+      m.element.style.left = `${clientX - this.dragPointerOffset.x + dx}px`;
+      m.element.style.top = `${clientY - this.dragPointerOffset.y + dy}px`;
     });
   }
 
   onPointerMove(e) {
     if (!this.activeDragPiece) return;
-    if (this.activePointerId !== undefined && e.pointerId !== undefined && e.pointerId !== this.activePointerId) return;
+    if (e.cancelable) e.preventDefault();
 
     const clientX = e.clientX ?? (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
     const clientY = e.clientY ?? (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
@@ -1912,10 +1921,8 @@ class JigsawGame {
 
     if (this.clusterDragOffsets) {
       this.clusterDragOffsets.forEach(item => {
-        const itemX = mainX + item.dx;
-        const itemY = mainY + item.dy;
-        item.piece.element.style.left = `${itemX}px`;
-        item.piece.element.style.top = `${itemY}px`;
+        item.piece.element.style.left = `${mainX + item.dx}px`;
+        item.piece.element.style.top = `${mainY + item.dy}px`;
       });
     }
   }
@@ -1925,7 +1932,6 @@ class JigsawGame {
     const piece = this.activeDragPiece;
     const cluster = piece.cluster || [piece];
     this.activeDragPiece = null;
-    this.activePointerId = null;
 
     this.moves++;
     this.movesDisplay.textContent = this.moves;
@@ -1943,7 +1949,7 @@ class JigsawGame {
 
     const distX = relBoardX - piece.targetX;
     const distY = relBoardY - piece.targetY;
-    const distanceToBoard = Math.sqrt(distX * distX + distY * distY);
+    const distanceToBoard = Math.hypot(distX, distY);
 
     const snapThreshold = Math.max(26, Math.min(piece.pieceW, piece.pieceH) * 0.45);
 
@@ -1951,19 +1957,22 @@ class JigsawGame {
       // 整組群組合體吸附到目標底板！
       this.snapClusterIntoBoard(cluster, boardRect);
     } else {
-      // 留在托盤/桌面上，轉回相對於 trayInner 的絕對座標
+      // 放回托盤/工作台
       cluster.forEach(m => {
         const mRect = m.element.getBoundingClientRect();
-        m.currentX = mRect.left - trayRect.left;
-        m.currentY = mRect.top - trayRect.top;
-        m.element.style.position = 'absolute';
-        m.element.style.left = `${m.currentX}px`;
-        m.element.style.top = `${m.currentY}px`;
+        const tableX = mRect.left - trayRect.left;
+        const tableY = mRect.top - trayRect.top;
+
+        this.trayInner.appendChild(m.element);
+        m.element.style.left = `${tableX}px`;
+        m.element.style.top = `${tableY}px`;
+        m.currentX = tableX;
+        m.currentY = tableY;
       });
 
       this.sound.playDrop();
 
-      // 檢查托盤桌面上是否有相鄰碎片可以合併拼在一起！
+      // 檢查桌面相鄰碎片磁吸合併！
       this.checkAndMergeClusters(cluster, snapThreshold);
     }
 
