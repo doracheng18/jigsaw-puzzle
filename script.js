@@ -1221,12 +1221,14 @@ class JigsawGame {
     let maxAvailable;
     if (isMobile) {
       if (isPortrait) {
-        // 手機直向模式：最大化寬度以利手指觸控對位
-        maxAvailable = Math.min(window.innerWidth - 24, 460);
+        // 全規格手機直向自適應（從小螢幕 SE 到 Pro Max 與 Android）：兼顧寬高比例，為托盤保留最佳操作空間
+        const maxHByScreen = Math.max(160, (window.innerHeight - 200) * 0.44);
+        const maxWByScreen = Math.min(window.innerWidth - 20, 480);
+        maxAvailable = Math.min(maxWByScreen, maxHByScreen * imgRatio);
       } else {
         // 手機橫向模式：注意垂直高度不要超出螢幕
-        const maxH = Math.max(160, window.innerHeight - 130);
-        maxAvailable = Math.min(stageWidth * 0.48, maxH * imgRatio);
+        const maxH = Math.max(160, window.innerHeight - 110);
+        maxAvailable = Math.min(stageWidth * 0.46, maxH * imgRatio);
       }
     } else {
       // 電腦模式：大螢幕最佳化
@@ -1412,6 +1414,18 @@ class JigsawGame {
       reader.readAsDataURL(file);
     });
 
+    // 🎲 隨機換一張精選拼圖
+    const randomPuzzleBtn = document.getElementById('btn-random-puzzle');
+    if (randomPuzzleBtn) {
+      randomPuzzleBtn.addEventListener('click', () => this.randomSwitchPuzzle());
+    }
+
+    // 🌐 線上探索即時更新的世界美圖
+    const onlinePuzzleBtn = document.getElementById('btn-online-puzzle');
+    if (onlinePuzzleBtn) {
+      onlinePuzzleBtn.addEventListener('click', () => this.fetchOnlineFreshPuzzle());
+    }
+
     // Shape style buttons (Jigsaw vs Tile)
     document.querySelectorAll('#shape-style-selector .seg-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -1535,6 +1549,44 @@ class JigsawGame {
         this.shopModal.classList.add('hidden');
       }
     });
+  }
+
+  // ============================================================================
+  // Image Refresh & Dynamic Catalog (適時更新圖片：隨機換圖 & 線上探索即時美圖)
+  // ============================================================================
+  randomSwitchPuzzle() {
+    const available = PUZZLE_CATALOG.filter(p => !p.isSecret || this.unlockedPuzzles.includes(p.id));
+    const candidates = available.filter(p => p.id !== this.currentImageItem.id);
+    if (candidates.length === 0) return;
+
+    const chosen = candidates[Math.floor(Math.random() * candidates.length)];
+    this.sound.playPick();
+    this.openPieceSelectionModal(chosen);
+  }
+
+  fetchOnlineFreshPuzzle() {
+    const btn = document.getElementById('btn-online-puzzle');
+    if (btn) btn.classList.add('loading');
+
+    const topics = ['mountains', 'lake', 'aurora', 'forest', 'ocean', 'sunset', 'cherry-blossoms', 'cats', 'dogs', 'castle'];
+    const topic = topics[Math.floor(Math.random() * topics.length)];
+    const seed = Date.now();
+    const onlineUrl = `https://picsum.photos/seed/${seed}/1200/900`;
+
+    const onlineItem = {
+      id: `online_${seed}`,
+      title: `探索新秘境 · ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+      location: `全球即時更新攝影 · 主題 #${topic}`,
+      category: 'nature',
+      categoryName: '🌐 線上新圖',
+      src: onlineUrl,
+      desc: '從線上即時更新拉取的全新高畫質自然攝影拼圖。'
+    };
+
+    PUZZLE_CATALOG.unshift(onlineItem);
+    this.sound.playPick();
+    if (btn) btn.classList.remove('loading');
+    this.openPieceSelectionModal(onlineItem);
   }
 
   // Load natural image asset

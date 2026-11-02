@@ -1886,7 +1886,41 @@ button {
   z-index: 99999 !important;
 }
 
-/* 縮放微調步進器 (Zoom Stepper Control) */
+/* 換圖與探索新圖按鈕特色樣式 */
+.btn-random-puzzle {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.18), rgba(6, 182, 212, 0.22));
+  border: 1px solid rgba(16, 185, 129, 0.45);
+  color: #34d399;
+}
+
+.btn-random-puzzle:hover {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.32), rgba(6, 182, 212, 0.38));
+  border-color: #34d399;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
+}
+
+.btn-online-puzzle {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.18), rgba(147, 51, 234, 0.22));
+  border: 1px solid rgba(59, 130, 246, 0.45);
+  color: #60a5fa;
+}
+
+.btn-online-puzzle:hover {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.32), rgba(147, 51, 234, 0.38));
+  border-color: #60a5fa;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.35);
+}
+
+/* 全裝置邊界與 Safe-Area (靈動島、瀏海、底部指示條全面適配) */
+html, body {
+  padding-top: max(0px, env(safe-area-inset-top));
+  padding-bottom: max(6px, env(safe-area-inset-bottom));
+  padding-left: max(0px, env(safe-area-inset-left));
+  padding-right: max(0px, env(safe-area-inset-right));
+  box-sizing: border-box;
+}
 .zoom-stepper-control {
   display: flex;
   align-items: center;
@@ -2067,5 +2101,26 @@ button,
   .tray-container {
     height: calc(100vh - 120px);
     min-height: 200px;
+  }
+}
+
+/* 極小螢幕手機 (如 iPhone SE, Mini, 寬度 <= 380px) 特化適配 */
+@media (max-width: 380px) {
+  .stat-pill {
+    padding: 3px 5px;
+    font-size: 0.72rem;
+  }
+  .brand-logo .logo-icon {
+    font-size: 1.25rem;
+  }
+  .logo-title {
+    font-size: 0.92rem;
+  }
+  .tray-container {
+    min-height: 220px;
+    height: 35vh;
+  }
+  .board-outer-wrapper {
+    padding: 4px;
   }
 }
