@@ -181,13 +181,18 @@
         </div>
       </div>
 
-      <!-- Board Zoom -->
-      <div class="control-unit">
-        <label class="toolbar-label">畫布大小：</label>
-        <div class="segmented-control" id="board-zoom-selector">
-          <button class="seg-btn active" data-zoom="1.0" title="標準 100%">1x</button>
-          <button class="seg-btn" data-zoom="1.25" title="放大 125%">1.25x</button>
-          <button class="seg-btn" data-zoom="1.5" title="特大 150%">1.5x</button>
+      <!-- Board Zoom (支援縮小與放大功能，全裝置自適應) -->
+      <div class="control-unit zoom-control-unit">
+        <label class="toolbar-label">拼圖縮放：</label>
+        <div class="zoom-stepper-control" id="board-zoom-stepper">
+          <button class="seg-btn zoom-step-btn" id="btn-zoom-out" title="縮小 (適合手機全景)">➖</button>
+          <div class="segmented-control" id="board-zoom-selector">
+            <button class="seg-btn" data-zoom="0.75" title="縮小 75% (手機好操作)">0.75x</button>
+            <button class="seg-btn active" data-zoom="1.0" title="標準 100%">1x</button>
+            <button class="seg-btn" data-zoom="1.25" title="放大 125%">1.25x</button>
+            <button class="seg-btn" data-zoom="1.5" title="特大 150%">1.5x</button>
+          </div>
+          <button class="seg-btn zoom-step-btn" id="btn-zoom-in" title="放大 (看清細節)">➕</button>
         </div>
       </div>
 

@@ -1012,11 +1012,13 @@ button {
 }
 
 .puzzle-piece.is-dragging {
+  position: fixed !important;
   cursor: grabbing !important;
-  z-index: 1000 !important;
-  filter: drop-shadow(0 16px 32px rgba(0, 0, 0, 0.8)) drop-shadow(0 0 12px rgba(6, 182, 212, 0.5)) brightness(1.1);
+  z-index: 99999 !important;
+  filter: drop-shadow(0 20px 38px rgba(0, 0, 0, 0.85)) drop-shadow(0 0 16px rgba(56, 189, 248, 0.6)) brightness(1.1);
   transform: scale(1.06);
   transition: none !important;
+  pointer-events: none;
 }
 
 .puzzle-piece.snapped {
@@ -1655,6 +1657,7 @@ button {
 }
 
 .modal-backdrop.hidden {
+  display: none !important;
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
@@ -1877,17 +1880,62 @@ button {
   box-shadow: 0 4px 12px rgba(168, 85, 247, 0.3);
 }
 
+.puzzle-piece.is-touch-lift,
 .puzzle-piece-wrapper.is-touch-lift {
-  transform: scale(1.06);
-  filter: drop-shadow(0 14px 24px rgba(0, 0, 0, 0.6)) drop-shadow(0 0 10px rgba(56, 189, 248, 0.45));
-  z-index: 9999 !important;
+  transform: scale(1.08);
+  filter: drop-shadow(0 18px 28px rgba(0, 0, 0, 0.75)) drop-shadow(0 0 14px rgba(56, 189, 248, 0.55));
+  z-index: 99999 !important;
 }
 
-/* 防止拖曳拼圖時觸發瀏覽器預設手勢滾動 */
+/* 縮放微調步進器 (Zoom Stepper Control) */
+.zoom-stepper-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.zoom-step-btn {
+  padding: 4px 10px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  background: rgba(30, 41, 59, 0.75);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  color: var(--text-main);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  touch-action: manipulation;
+}
+
+.zoom-step-btn:hover {
+  background: var(--bg-hover);
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+  transform: translateY(-1px);
+}
+
+.zoom-step-btn:active {
+  transform: scale(0.95);
+}
+
+/* 防止拖曳拼圖時觸發瀏覽器預設手勢滾動，並提升 iOS 觸控反應 */
+.puzzle-piece,
 .puzzle-piece-wrapper,
 #drag-layer,
 #board-frame {
   touch-action: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+button,
+.seg-btn,
+.stat-pill,
+.item-chip,
+.current-theme-pill {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* ==========================================================================

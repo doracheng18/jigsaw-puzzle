@@ -1422,15 +1422,27 @@ class JigsawGame {
       });
     });
 
-    // Board Zoom selector (1x, 1.25x, 1.5x)
+    // Board Zoom controls (支援縮小與放大功能，全裝置底板與碎片同步等比縮放)
+    const zoomOutBtn = document.getElementById('btn-zoom-out');
+    if (zoomOutBtn) {
+      zoomOutBtn.addEventListener('click', () => {
+        const nextZoom = Math.max(0.6, Math.round((this.boardZoom - 0.15) * 100) / 100);
+        this.updateBoardAndPiecesZoom(nextZoom);
+      });
+    }
+
+    const zoomInBtn = document.getElementById('btn-zoom-in');
+    if (zoomInBtn) {
+      zoomInBtn.addEventListener('click', () => {
+        const nextZoom = Math.min(1.8, Math.round((this.boardZoom + 0.15) * 100) / 100);
+        this.updateBoardAndPiecesZoom(nextZoom);
+      });
+    }
+
     document.querySelectorAll('#board-zoom-selector .seg-btn').forEach(btn => {
       btn.addEventListener('click', () => {
-        document.querySelectorAll('#board-zoom-selector .seg-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        this.boardZoom = parseFloat(btn.dataset.zoom);
-        this.computeBoardDimensions();
-        this.drawBoardBackground();
-        this.recalculateTargetCoordinates();
+        const zoom = parseFloat(btn.dataset.zoom);
+        this.updateBoardAndPiecesZoom(zoom);
       });
     });
 
@@ -1693,7 +1705,8 @@ class JigsawGame {
 
         // Piece DOM wrapper
         const wrapper = document.createElement('div');
-        wrapper.className = 'puzzle-piece';
+        wrapper.className = 'puzzle-piece puzzle-piece-wrapper';
+        wrapper.style.touchAction = 'none';
         wrapper.dataset.id = id;
         wrapper.dataset.row = r;
         wrapper.dataset.col = c;
@@ -1722,8 +1735,10 @@ class JigsawGame {
           targetY,
           isSnapped: false,
           currentX: 0,
-          currentY: 0
+          currentY: 0,
+          cluster: null
         };
+        pieceObj.cluster = [pieceObj];
 
         wrapper.addEventListener('pointerdown', (e) => this.onPiecePointerDown(e, pieceObj));
         this.pieces.push(pieceObj);
@@ -1838,6 +1853,12 @@ class JigsawGame {
     if (piece.isSnapped) return;
     e.preventDefault();
 
+    try {
+      if (e.target && e.target.setPointerCapture && e.pointerId !== undefined) {
+        e.target.setPointerCapture(e.pointerId);
+      }
+    } catch (err) {}
+
     if (!this.hasStarted) {
       this.startTimer();
       this.hasStarted = true;
@@ -1845,89 +1866,131 @@ class JigsawGame {
 
     this.sound.playPick();
     this.activeDragPiece = piece;
+    this.activePointerId = e.pointerId;
 
-    const el = piece.element;
-    const rect = el.getBoundingClientRect();
+    const clientX = e.clientX ?? (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+    const clientY = e.clientY ?? (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
 
-    // 觸控人體工學優化：手機手指觸控時向上微抬 24px，避免玩家手指遮住拼圖卡榫與對位邊緣
     const isTouch = e.pointerType === 'touch' || document.body.classList.contains('is-touch') || document.body.classList.contains('is-mobile');
     const touchLiftY = isTouch ? 24 : 0;
 
-    this.dragPointerOffset.x = e.clientX - rect.left;
-    this.dragPointerOffset.y = e.clientY - rect.top + touchLiftY;
+    const baseRect = piece.element.getBoundingClientRect();
+    this.dragPointerOffset = {
+      x: clientX - baseRect.left,
+      y: clientY - baseRect.top + touchLiftY
+    };
 
-    this.dragLayer.appendChild(el);
-    el.classList.add('is-dragging');
-    if (isTouch) el.classList.add('is-touch-lift');
+    const cluster = piece.cluster || [piece];
+    this.clusterDragOffsets = [];
 
-    el.style.left = `${e.clientX - this.dragPointerOffset.x}px`;
-    el.style.top = `${e.clientY - this.dragPointerOffset.y}px`;
+    // 移動群組中的所有碎片，改用 fixed 螢幕定位，解決 iPhone 點選中斷 bug，DOM 樹無需中途移動
+    cluster.forEach(m => {
+      const mRect = m.element.getBoundingClientRect();
+      m.element.classList.add('is-dragging');
+      if (isTouch) m.element.classList.add('is-touch-lift');
+
+      this.clusterDragOffsets.push({
+        piece: m,
+        dx: mRect.left - baseRect.left,
+        dy: mRect.top - baseRect.top
+      });
+
+      m.element.style.left = `${mRect.left}px`;
+      m.element.style.top = `${mRect.top}px`;
+    });
   }
 
   onPointerMove(e) {
     if (!this.activeDragPiece) return;
-    const piece = this.activeDragPiece;
-    const el = piece.element;
+    if (this.activePointerId !== undefined && e.pointerId !== undefined && e.pointerId !== this.activePointerId) return;
 
-    const currentX = e.clientX - this.dragPointerOffset.x;
-    const currentY = e.clientY - this.dragPointerOffset.y;
+    const clientX = e.clientX ?? (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+    const clientY = e.clientY ?? (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
 
-    el.style.left = `${currentX}px`;
-    el.style.top = `${currentY}px`;
+    const mainX = clientX - this.dragPointerOffset.x;
+    const mainY = clientY - this.dragPointerOffset.y;
+
+    if (this.clusterDragOffsets) {
+      this.clusterDragOffsets.forEach(item => {
+        const itemX = mainX + item.dx;
+        const itemY = mainY + item.dy;
+        item.piece.element.style.left = `${itemX}px`;
+        item.piece.element.style.top = `${itemY}px`;
+      });
+    }
   }
 
   onPointerUp(e) {
     if (!this.activeDragPiece) return;
     const piece = this.activeDragPiece;
-    const el = piece.element;
+    const cluster = piece.cluster || [piece];
     this.activeDragPiece = null;
-    el.classList.remove('is-dragging', 'is-touch-lift');
+    this.activePointerId = null;
 
     this.moves++;
     this.movesDisplay.textContent = this.moves;
 
+    cluster.forEach(m => {
+      m.element.classList.remove('is-dragging', 'is-touch-lift');
+    });
+
     const boardRect = this.boardFrame.getBoundingClientRect();
-    const currentRect = el.getBoundingClientRect();
+    const trayRect = this.trayInner.getBoundingClientRect();
 
-    const relativeX = currentRect.left - boardRect.left;
-    const relativeY = currentRect.top - boardRect.top;
+    const mainRect = piece.element.getBoundingClientRect();
+    const relBoardX = mainRect.left - boardRect.left;
+    const relBoardY = mainRect.top - boardRect.top;
 
-    const distX = relativeX - piece.targetX;
-    const distY = relativeY - piece.targetY;
-    const distance = Math.sqrt(distX * distX + distY * distY);
+    const distX = relBoardX - piece.targetX;
+    const distY = relBoardY - piece.targetY;
+    const distanceToBoard = Math.sqrt(distX * distX + distY * distY);
 
     const snapThreshold = Math.max(26, Math.min(piece.pieceW, piece.pieceH) * 0.45);
 
-    if (distance <= snapThreshold) {
-      // MAGNETIC SNAP SUCCESS!
-      this.snapPieceIntoPlace(piece, boardRect);
+    if (distanceToBoard <= snapThreshold) {
+      // 整組群組合體吸附到目標底板！
+      this.snapClusterIntoBoard(cluster, boardRect);
     } else {
-      // 放錯不自動彈回！留在玩家釋放的位置
+      // 留在托盤/桌面上，轉回相對於 trayInner 的絕對座標
+      cluster.forEach(m => {
+        const mRect = m.element.getBoundingClientRect();
+        m.currentX = mRect.left - trayRect.left;
+        m.currentY = mRect.top - trayRect.top;
+        m.element.style.position = 'absolute';
+        m.element.style.left = `${m.currentX}px`;
+        m.element.style.top = `${m.currentY}px`;
+      });
+
       this.sound.playDrop();
-      this.leavePieceOnTable(piece, currentRect);
+
+      // 檢查托盤桌面上是否有相鄰碎片可以合併拼在一起！
+      this.checkAndMergeClusters(cluster, snapThreshold);
     }
 
-    // Auto-save in-progress state to local storage
     this.saveGameProgress();
   }
 
-  snapPieceIntoPlace(piece, boardRect) {
-    piece.isSnapped = true;
-    this.snappedCount++;
+  snapClusterIntoBoard(cluster, boardRect) {
+    cluster.forEach(p => {
+      if (p.isSnapped) return;
+      p.isSnapped = true;
+      this.snappedCount++;
 
-    const el = piece.element;
-    el.classList.add('snapped');
-    el.classList.remove('edge-dimmed', 'hint-highlight');
+      const el = p.element;
+      el.classList.remove('is-dragging', 'is-touch-lift', 'edge-dimmed', 'hint-highlight');
+      el.classList.add('snapped');
+      el.style.position = 'absolute';
 
-    this.boardSnappedLayer.appendChild(el);
-    el.style.left = `${piece.targetX}px`;
-    el.style.top = `${piece.targetY}px`;
+      this.boardSnappedLayer.appendChild(el);
+      el.style.left = `${p.targetX}px`;
+      el.style.top = `${p.targetY}px`;
+
+      const sparkX = boardRect.left + p.targetX + p.canvasW / 2;
+      const sparkY = boardRect.top + p.targetY + p.canvasH / 2;
+      this.fx.createSpark(sparkX, sparkY);
+    });
 
     this.sound.playSnap();
-    const sparkX = boardRect.left + piece.targetX + piece.canvasW / 2;
-    const sparkY = boardRect.top + piece.targetY + piece.canvasH / 2;
-    this.fx.createSpark(sparkX, sparkY);
-
     this.updateStatsUI();
 
     if (this.snappedCount === this.pieces.length) {
@@ -1935,19 +1998,158 @@ class JigsawGame {
     }
   }
 
-  leavePieceOnTable(piece, currentRect) {
-    const el = piece.element;
-    const trayRect = this.trayInner.getBoundingClientRect();
+  snapPieceIntoPlace(piece, boardRect) {
+    this.snapClusterIntoBoard([piece], boardRect);
+  }
 
-    const tableX = currentRect.left - trayRect.left;
-    const tableY = currentRect.top - trayRect.top;
+  checkAndMergeClusters(cluster, snapThreshold) {
+    let merged = false;
+    const unsnapped = this.pieces.filter(p => !p.isSnapped && !cluster.includes(p));
 
-    this.trayInner.appendChild(el);
-    el.style.left = `${tableX}px`;
-    el.style.top = `${tableY}px`;
+    for (const member of [...cluster]) {
+      for (const other of unsnapped) {
+        const dRow = other.row - member.row;
+        const dCol = other.col - member.col;
+        // 檢查是否在邏輯網格上為相鄰卡榫 (上下或左右相鄰)
+        if (Math.abs(dRow) + Math.abs(dCol) === 1) {
+          const idealDiffX = dCol * this.pieces[0].pieceW;
+          const idealDiffY = dRow * this.pieces[0].pieceH;
 
-    piece.currentX = tableX;
-    piece.currentY = tableY;
+          const actualDiffX = other.currentX - member.currentX;
+          const actualDiffY = other.currentY - member.currentY;
+
+          const errDist = Math.hypot(actualDiffX - idealDiffX, actualDiffY - idealDiffY);
+
+          if (errDist <= snapThreshold) {
+            // 兩塊/兩組碎片靠近彼此！自動磁吸合併！
+            const shiftX = (other.currentX - idealDiffX) - member.currentX;
+            const shiftY = (other.currentY - idealDiffY) - member.currentY;
+
+            // 整組 cluster 自動平移，精確拼合卡榫
+            cluster.forEach(m => {
+              m.currentX += shiftX;
+              m.currentY += shiftY;
+              m.element.style.transition = 'left 0.18s ease-out, top 0.18s ease-out';
+              m.element.style.left = `${m.currentX}px`;
+              m.element.style.top = `${m.currentY}px`;
+              setTimeout(() => { m.element.style.transition = ''; }, 200);
+            });
+
+            this.sound.playSnap();
+            const mRect = member.element.getBoundingClientRect();
+            this.fx.createSpark(mRect.left + mRect.width / 2, mRect.top + mRect.height / 2);
+
+            const otherCluster = other.cluster || [other];
+            const combined = [...new Set([...cluster, ...otherCluster])];
+            combined.forEach(p => { p.cluster = combined; });
+            cluster = combined;
+
+            merged = true;
+            break;
+          }
+        }
+      }
+      if (merged) break;
+    }
+
+    if (merged) {
+      this.checkAndMergeClusters(cluster, snapThreshold);
+    }
+  }
+
+  // ============================================================================
+  // Dynamic Board & Pieces Zoom (縮小/放大底板與碎片等比同步更新)
+  // ============================================================================
+  updateBoardAndPiecesZoom(newZoom) {
+    if (!this.loadedImage || this.pieces.length === 0) return;
+    const oldBoardW = this.boardWidth || 1;
+    this.boardZoom = Math.min(2.0, Math.max(0.6, newZoom));
+
+    this.computeBoardDimensions();
+    this.drawBoardBackground();
+
+    const scaleRatio = this.boardWidth / oldBoardW;
+    this.rebuildOrScalePieces(scaleRatio);
+
+    // 同步更新 UI segmented control 上的 active 狀態
+    document.querySelectorAll('#board-zoom-selector .seg-btn').forEach(btn => {
+      const val = parseFloat(btn.dataset.zoom);
+      btn.classList.toggle('active', Math.abs(val - this.boardZoom) < 0.05);
+    });
+
+    this.saveGameProgress();
+  }
+
+  rebuildOrScalePieces(scaleRatio) {
+    const cols = this.gridCols;
+    const rows = this.gridRows;
+    const pieceW = this.boardWidth / cols;
+    const pieceH = this.boardHeight / rows;
+    const tabSize = this.shapeStyle === 'jigsaw' ? Math.round(Math.min(pieceW, pieceH) * 0.22) : 0;
+    const canvasW = pieceW + tabSize * 2;
+    const canvasH = pieceH + tabSize * 2;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+    const img = this.loadedImage;
+    const srcStepX = img.width / cols;
+    const srcStepY = img.height / rows;
+
+    this.pieces.forEach(p => {
+      p.pieceW = pieceW;
+      p.pieceH = pieceH;
+      p.tabSize = tabSize;
+      p.canvasW = canvasW;
+      p.canvasH = canvasH;
+
+      p.targetX = p.col * pieceW - tabSize;
+      p.targetY = p.row * pieceH - tabSize;
+
+      // 更新 canvas 尺寸與像素
+      p.canvas.width = Math.round(canvasW * dpr);
+      p.canvas.height = Math.round(canvasH * dpr);
+      p.canvas.style.width = `${canvasW}px`;
+      p.canvas.style.height = `${canvasH}px`;
+
+      p.element.style.width = `${canvasW}px`;
+      p.element.style.height = `${canvasH}px`;
+
+      const ctx = p.canvas.getContext('2d');
+      ctx.scale(dpr, dpr);
+      ctx.clearRect(0, 0, canvasW, canvasH);
+
+      this.drawPiecePath(ctx, tabSize, tabSize, pieceW, pieceH, p.edges);
+      ctx.save();
+      ctx.clip();
+
+      const tabRatioX = tabSize / pieceW;
+      const tabRatioY = tabSize / pieceH;
+      const srcCropX = (p.col - tabRatioX) * srcStepX;
+      const srcCropY = (p.row - tabRatioY) * srcStepY;
+      const srcCropW = srcStepX * (1 + tabRatioX * 2);
+      const srcCropH = srcStepY * (1 + tabRatioY * 2);
+
+      ctx.drawImage(img, srcCropX, srcCropY, srcCropW, srcCropH, 0, 0, canvasW, canvasH);
+      this.drawPieceBevel(ctx, tabSize, tabSize, pieceW, pieceH, p.edges);
+      ctx.restore();
+
+      ctx.save();
+      this.drawPiecePath(ctx, tabSize, tabSize, pieceW, pieceH, p.edges);
+      ctx.lineWidth = 1.2;
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+      ctx.stroke();
+      ctx.restore();
+
+      if (p.isSnapped) {
+        p.element.style.left = `${p.targetX}px`;
+        p.element.style.top = `${p.targetY}px`;
+      } else {
+        // 桌面上的碎片 (包含合併群組) 依照縮放比例等比重新定位
+        p.currentX = Math.round(p.currentX * scaleRatio);
+        p.currentY = Math.round(p.currentY * scaleRatio);
+        p.element.style.left = `${p.currentX}px`;
+        p.element.style.top = `${p.currentY}px`;
+      }
+    });
   }
 
   // ============================================================================
@@ -1956,6 +2158,9 @@ class JigsawGame {
   alignTrayPieces() {
     const unsnapped = this.pieces.filter(p => !p.isSnapped);
     if (unsnapped.length === 0) return;
+
+    // 重置未吸附碎片的群組，方便打亂排列
+    unsnapped.forEach(p => { p.cluster = [p]; });
 
     // 將未拼碎片隨機打亂洗牌（Fisher-Yates Shuffle），確保排列整齊但順序是隨機亂序的
     const shuffled = [...unsnapped];
